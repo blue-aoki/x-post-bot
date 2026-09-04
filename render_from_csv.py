@@ -44,3 +44,39 @@ def main():
     if not url:
         print("SHEET_CSV_URL が設定されていません")
         sys.exit(1)
+
+    handle = os.environ.get("ACCOUNT_HANDLE", "@KumoAoiro")
+    os.makedirs(CARD_DIR, exist_ok=True)
+    rows = fetch_rows(url)
+    made = 0
+
+    for row in rows:
+        genre = (row.get("ジャンル") or "").strip()
+        term = (row.get("見出し語") or "").strip()
+        answer = (row.get("言い換え・訳") or "").strip()
+        note = (row.get("補足") or "").strip()
+        reading = (row.get("読み") or "").strip()
+
+        if not (genre and term and answer):
+            continue
+        if genre not in LABELS:
+            print(f"未知のジャンル '{genre}' を飛ばします（{term}）")
+            continue
+
+        slug = make_slug(genre, term)
+        path = f"{CARD_DIR}/{slug}.png"
+        if os.path.exists(path):
+            continue
+
+        label, theme = LABELS[genre]
+        render({"theme": theme, "label": label, "term": term, "reading": reading,
+                "answer": answer, "note": note, "footer": handle},
+               size=(1080, 1080), out=path)
+        print(f"rendered: {term} -> {slug}.png")
+        made += 1
+
+    print(f"{made}件の画像を生成しました" if made else "生成対象はありませんでした")
+
+
+if __name__ == "__main__":
+    main()
