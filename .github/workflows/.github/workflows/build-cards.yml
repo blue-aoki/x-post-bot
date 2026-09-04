@@ -1,0 +1,40 @@
+name: Build cards
+
+on:
+  schedule:
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+
+      - name: Fetch fonts
+        run: |
+          B=https://raw.githubusercontent.com/google/fonts/main/ofl/zenmarugothic
+          curl -sSL -o /tmp/zmg.ttf $B/ZenMaruGothic-Bold.ttf
+          curl -sSL -o /tmp/ZenMaruGothic-Medium.ttf $B/ZenMaruGothic-Medium.ttf
+          curl -sSL -o /tmp/ZenMaruGothic-Regular.ttf $B/ZenMaruGothic-Regular.ttf
+
+      - name: Render
+        env:
+          SHEET_CSV_URL: ${{ vars.SHEET_CSV_URL }}
+          ACCOUNT_HANDLE: ${{ vars.ACCOUNT_HANDLE }}
+        run: python render_from_csv.py
+
+      - name: Commit
+        run: |
+          git config user.name "card-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add docs/cards
+          git diff --staged --quiet || git commit -m "cards: $(date +%F)"
+          git push
